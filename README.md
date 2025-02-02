@@ -1,4 +1,4 @@
-GOG Game Installer Processor
+GOGtoGV
 
 This script automates the process of extracting, processing, and archiving GOG game installers. It watches a specified directory for new .exe files, processes the installers by extracting metadata from the GOG API, creates a zip archive, and moves the processed files to designated folders.
 Features
