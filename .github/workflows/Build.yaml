@@ -1,5 +1,5 @@
 name: Build Docker Image
-
+permissions: write-all
 on:
   push:
     branches:
