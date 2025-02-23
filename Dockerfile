@@ -14,10 +14,6 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy necessary files
 COPY main.py /app/main.py
-COPY bin/innoextract /app/bin/innoextract
-
-# Set permissions for innoextract
-RUN chmod +x /app/bin/innoextract
 
 # Set environment variables
 ENV WATCH_DIR=/WATCHED
