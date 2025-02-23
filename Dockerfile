@@ -9,7 +9,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy necessary files
-COPY script.py /app/script.py
+COPY script.py /app/main.py
 COPY config.ini /app/config.ini
 COPY bin/innoextract /app/bin/innoextract
 
