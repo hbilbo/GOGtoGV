@@ -20,12 +20,6 @@ DEST_DIR = Path(config.get('folders', 'dest_dir', fallback="/DEST"))
 PROCESSED_JSON = WATCH_DIR / "processed_files.json"
 PROCESSED_DIR = Path(config.get('folders', 'processed_dir', fallback="processed"))
 
-# Determine platform-specific innoextract path
-if sys.platform == "win32":
-    INNOEXTRACT_PATH = Path(__file__).parent / "bin/innoextract.exe"
-else:
-    INNOEXTRACT_PATH = Path(__file__).parent / "bin/innoextract"
-
 # Ensure necessary directories exist
 DEST_DIR.mkdir(parents=True, exist_ok=True)
 (WATCH_DIR / PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
@@ -69,7 +63,7 @@ def fetch_metadata(game_id):
 def process_installer(installer):
     print(f"Extracting GOG game ID from {installer}...")
     try:
-        result = subprocess.run([str(INNOEXTRACT_PATH), "--gog-game-id", str(installer)], capture_output=True, text=True)
+        result = subprocess.run(["innoextract", "--gog-game-id", str(installer)], capture_output=True, text=True)
         gog_game_id = next((line.split("ID is ")[-1] for line in result.stdout.splitlines() if "ID is " in line), None)
         
         if not gog_game_id:
@@ -98,11 +92,8 @@ def process_installer(installer):
     
     try:
         print(f"Extracting {installer}...")
-        if sys.platform == "win32":
-            subprocess.run([str(INNOEXTRACT_PATH), "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
-        else:
-            subprocess.run("innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
-
+        subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+        
         print(f"Creating zip archive in {DEST_DIR}...")
         zip_name = f"{folder_name}.zip"
         with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
