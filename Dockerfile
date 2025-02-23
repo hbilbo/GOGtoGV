@@ -25,4 +25,4 @@ ENV PROCESSED_DIR=processed
 RUN mkdir -p "$WATCH_DIR" "$DEST_DIR" "$WATCH_DIR/$PROCESSED_DIR"
 
 # Set entrypoint
-CMD ["python", "/app/script.py"]
+CMD ["python", "/app/main.py"]
