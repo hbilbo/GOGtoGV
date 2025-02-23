@@ -12,7 +12,7 @@ import configparser
 
 # Load configuration from ini file
 config = configparser.ConfigParser()
-config.read('/config/config.ini')
+config.read('/config.ini')
 
 # Get folder paths from config or use default
 WATCH_DIR = Path(config.get('folders', 'watch_dir', fallback="/WATCHED"))
@@ -98,8 +98,11 @@ def process_installer(installer):
     
     try:
         print(f"Extracting {installer}...")
-        subprocess.run([str(INNOEXTRACT_PATH), "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
-        
+        if sys.platform == "win32":
+            subprocess.run([str(INNOEXTRACT_PATH), "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+        else:
+            subprocess.run("innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+
         print(f"Creating zip archive in {DEST_DIR}...")
         zip_name = f"{folder_name}.zip"
         with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:

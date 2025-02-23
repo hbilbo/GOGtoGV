@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y wget unzip && \
+    apt-get install -y wget unzip innoextract && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
