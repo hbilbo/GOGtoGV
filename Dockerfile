@@ -8,6 +8,10 @@ RUN apt-get update && \
     apt-get install -y wget unzip && \
     rm -rf /var/lib/apt/lists/*
 
+# Copy requirements and install Python dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
 # Copy necessary files
 COPY main.py /app/main.py
 COPY bin/innoextract /app/bin/innoextract
