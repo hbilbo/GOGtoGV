@@ -13,8 +13,17 @@ Automatic Folder Watching: Watches a specified directory for new .exe files.
 Prerequisites
 
 - Python 3.x
-- innoextract (Windows users will need innoextract.exe)
+- innoextract installed on the system and in PATH
 - A valid config.ini configuration file.
+
+
+Docker
+
+    docker run -d --name gogtogv -v /path/to/watch:/WATCHED -v /path/to/dest:/DEST ghcr.io/toylerrr/gogtogv:latest
+
+    Its also a good idea to do -v /tmp:/tmp so that you dont fill your docker container with the extracted files. 
+
+
 
 
 Usage
