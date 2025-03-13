@@ -12,7 +12,7 @@ import configparser
 
 # Load configuration from ini file
 config = configparser.ConfigParser()
-config.read('/config.ini')
+config.read('config.ini')
 
 # Get folder paths from config or use default
 WATCH_DIR = Path(config.get('folders', 'watch_dir', fallback="/WATCHED"))
