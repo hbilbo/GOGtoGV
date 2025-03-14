@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 import zipfile
 import configparser
+import re
 
 # Load configuration from ini file
 config = configparser.ConfigParser()
@@ -51,7 +52,9 @@ def fetch_metadata(game_id):
 
     data = response.json()
 
-    game_title = data.get("title", "Unknown Game")
+    gt = data.get("title", "Unknown Game")
+    game_title = re.sub(r'[^\w\s]', '', gt)
+
     release_date = data.get("release_date", "0000")
 
     if release_date:
