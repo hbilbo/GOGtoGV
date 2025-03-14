@@ -92,7 +92,7 @@ def process_installer(installer):
     game_folder.mkdir(parents=True, exist_ok=True)
 
     # Create temporary directory
-    temp_dir = Path(tempfile.mkdtemp())
+    temp_dir = Path(tempfile.mkdtemp(prefix="processing_",dir=WATCH_DIR))
     
     try:
         print(f"Extracting {installer}...")
