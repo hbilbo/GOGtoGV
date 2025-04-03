@@ -186,21 +186,24 @@ def process_directory_game(game_dir):
 def watch_folder():
     print(f"Watching {WATCH_DIR} for new EXE files or directories...")
     while True:
-        # Process individual EXE files in the main WATCH_DIR
-        exe_files = list(WATCH_DIR.glob("*.exe"))
-        if exe_files:
-            for exe_file in exe_files:
-                if str(exe_file) not in processed_files:
-                    print(f"New installer detected: {exe_file}")
-                    process_installer(exe_file)
-        else:
-            # No .exe files in WATCH_DIR, check each subdirectory
+        try:
+            # Process individual EXE files in the main WATCH_DIR
+            exe_files = list(WATCH_DIR.glob("*.exe"))
+            if exe_files:
+                for exe_file in exe_files:
+                    if str(exe_file) not in processed_files:
+                        print(f"New installer detected: {exe_file}")
+                        process_installer(exe_file)
+            # Also check each subdirectory in WATCH_DIR for EXE files
             for sub_dir in WATCH_DIR.iterdir():
                 if sub_dir.is_dir():
                     exe_files_in_dir = list(sub_dir.glob("*.exe"))
                     if exe_files_in_dir:
                         process_directory_game(sub_dir)
+        except Exception as e:
+            print(f"Error in watcher loop: {e}")
         time.sleep(5)
+
 
 if __name__ == "__main__":
     watch_folder()
