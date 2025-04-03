@@ -51,53 +51,44 @@ def fetch_metadata(game_id):
         return "Unknown Game", "0000"
 
     data = response.json()
-
     gt = data.get("title", "Unknown Game")
     game_title = re.sub(r'[^\w\s]', '', gt)
-
     release_date = data.get("release_date", "0000")
-
     if release_date:
-        year = release_date.split("-")[0]  # Extract year
+        year = release_date.split("-")[0]
     else:
-        year = "0000"  # Default if release_date is None
-
+        year = "0000"
     return game_title, year
 
+# Process a single installer (.exe) in WATCH_DIR
 def process_installer(installer):
     print(f"Extracting GOG game ID from {installer}...")
     try:
         result = subprocess.run(["innoextract", "--gog-game-id", str(installer)], capture_output=True, text=True)
         gog_game_id = next((line.split("ID is ")[-1] for line in result.stdout.splitlines() if "ID is " in line), None)
-        
         if not gog_game_id:
             raise ValueError("No game ID found")
     except Exception as e:
         print(f"Error: Unable to extract GOG game ID: {e}")
         return
     
-    # Fetch game metadata
+    # Fetch game metadata using the installer as the base game
     game_name, year = fetch_metadata(gog_game_id)
-    
-    # Create folder name and exclude year if it's '0000'
     if year == "0000":
         folder_name = f"{game_name} (W_P)"
     else:
         folder_name = f"{game_name} (W_P) ({year})"
-    
-    folder_name = folder_name.replace(":", "")  # Remove dashes from folder name
+    folder_name = folder_name.replace(":", "")
     
     # Create a subfolder inside processed folder named after the game
     game_folder = WATCH_DIR / PROCESSED_DIR / folder_name
     game_folder.mkdir(parents=True, exist_ok=True)
-
-    # Create temporary directory
-    temp_dir = Path(tempfile.mkdtemp(prefix="processing_",dir=WATCH_DIR))
     
+    # Create temporary directory
+    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
     try:
         print(f"Extracting {installer}...")
         subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
-        
         print(f"Creating zip archive in {DEST_DIR}...")
         zip_name = f"{folder_name}.zip"
         with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -105,36 +96,110 @@ def process_installer(installer):
                 for file in files:
                     file_path = Path(root) / file
                     zipf.write(file_path, file_path.relative_to(temp_dir))
-        
         print(f"Extraction, zipping, and cleanup completed successfully!")
         print(f"Archive: {DEST_DIR / zip_name}")
     finally:
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
     
-    # Move processed installer and bin files to the game folder inside processed
+    # Move processed installer and related .bin files to the processed folder
     processed_path = game_folder / installer.name
     installer.rename(processed_path)
     print(f"Moved {installer} to {processed_path}.")
-    
-    # Move .bin files
     for bin_file in WATCH_DIR.glob(installer.stem + "-*.bin"):
-        bin_file.rename(game_folder / bin_file.name)
-        print(f"Moved {bin_file} to {game_folder / bin_file.name}.")
+        new_bin_path = game_folder / bin_file.name
+        bin_file.rename(new_bin_path)
+        print(f"Moved {bin_file} to {new_bin_path}.")
     
-    # Add to processed files list and save
     processed_files.add(str(installer))
     save_processed_files(processed_files)
 
-# Watch the folder for new EXE files
-def watch_folder():
-    print(f"Watching {WATCH_DIR} for new EXE files...")
+# Process all installers in a directory as one game (base game metadata is used)
+def process_directory_game(game_dir):
+    print(f"Processing game in directory: {game_dir}")
+    base_installer = next(game_dir.glob("*.exe"), None)
+    if not base_installer:
+        print(f"No installer found in {game_dir}. Skipping.")
+        return
+
+    try:
+        result = subprocess.run(["innoextract", "--gog-game-id", str(base_installer)], capture_output=True, text=True)
+        gog_game_id = next((line.split("ID is ")[-1] for line in result.stdout.splitlines() if "ID is " in line), None)
+        if not gog_game_id:
+            raise ValueError("No game ID found")
+    except Exception as e:
+        print(f"Error: Unable to extract GOG game ID from {base_installer}: {e}")
+        return
+
+    game_name, year = fetch_metadata(gog_game_id)
+    if year == "0000":
+        folder_name = f"{game_name} (W_P)"
+    else:
+        folder_name = f"{game_name} (W_P) ({year})"
+    folder_name = folder_name.replace(":", "")
     
+    game_folder = WATCH_DIR / PROCESSED_DIR / folder_name
+    game_folder.mkdir(parents=True, exist_ok=True)
+    
+    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
+    try:
+        for installer in game_dir.glob("*.exe"):
+            if str(installer) in processed_files:
+                continue
+            print(f"Extracting {installer}...")
+            subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+    except Exception as e:
+        print(f"Error during extraction: {e}")
+        shutil.rmtree(temp_dir)
+        return
+
+    try:
+        print(f"Creating zip archive in {DEST_DIR}...")
+        zip_name = f"{folder_name}.zip"
+        with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = Path(root) / file
+                    zipf.write(file_path, file_path.relative_to(temp_dir))
+        print(f"Extraction, zipping, and cleanup completed successfully!")
+        print(f"Archive: {DEST_DIR / zip_name}")
+    finally:
+        print(f"Cleaning up {temp_dir}...")
+        shutil.rmtree(temp_dir)
+
+    for installer in game_dir.glob("*.exe"):
+        if str(installer) in processed_files:
+            continue
+        processed_path = game_folder / installer.name
+        installer.rename(processed_path)
+        print(f"Moved {installer} to {processed_path}.")
+        processed_files.add(str(installer))
+    
+    for bin_file in game_dir.glob("*.bin"):
+        new_bin_path = game_folder / bin_file.name
+        bin_file.rename(new_bin_path)
+        print(f"Moved {bin_file} to {new_bin_path}.")
+
+    save_processed_files(processed_files)
+
+# Watch the folder for new EXE files or directories containing EXE files
+def watch_folder():
+    print(f"Watching {WATCH_DIR} for new EXE files or directories...")
     while True:
-        for exe_file in WATCH_DIR.glob("*.exe"):
-            if str(exe_file) not in processed_files:
-                print(f"New installer detected: {exe_file}")
-                process_installer(exe_file)
+        # Process individual EXE files in the main WATCH_DIR
+        exe_files = list(WATCH_DIR.glob("*.exe"))
+        if exe_files:
+            for exe_file in exe_files:
+                if str(exe_file) not in processed_files:
+                    print(f"New installer detected: {exe_file}")
+                    process_installer(exe_file)
+        else:
+            # No .exe files in WATCH_DIR, check each subdirectory
+            for sub_dir in WATCH_DIR.iterdir():
+                if sub_dir.is_dir():
+                    exe_files_in_dir = list(sub_dir.glob("*.exe"))
+                    if exe_files_in_dir:
+                        process_directory_game(sub_dir)
         time.sleep(5)
 
 if __name__ == "__main__":
