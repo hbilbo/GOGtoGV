@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-import os
-import sys
 import shutil
 import subprocess
 import requests
 import json
 import tempfile
-import time
 from pathlib import Path
-import zipfile
 import configparser
 import re
 
@@ -74,10 +70,11 @@ def process_installer(installer):
     
     # Fetch game metadata using the installer as the base game
     game_name, year = fetch_metadata(gog_game_id)
+    game_name = game_name.title().replace("Ii","II").replace("IIi","III").replace("Iv","IV").replace("Vi","VI").replace("VIi","VII").replace("VIIi","VIII").replace("Ix","IX")
     if year == "0000":
-        folder_name = f"{game_name} (W_P)"
+        folder_name = f"{game_name} [GOG] (v) (W_P) (year)"
     else:
-        folder_name = f"{game_name} (W_P) ({year})"
+        folder_name = f"{game_name} [GOG] (v) (W_P) ({year})"
     folder_name = folder_name.replace(":", "")
     
     # Create a subfolder inside processed folder named after the game
@@ -89,20 +86,18 @@ def process_installer(installer):
     try:
         print(f"Extracting {installer}...")
         subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
-        print(f"Creating zip archive in {DEST_DIR}...")
-        zip_name = f"{folder_name}.zip"
-        with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, _, files in os.walk(temp_dir):
-                for file in files:
-                    file_path = Path(root) / file
-                    zipf.write(file_path, file_path.relative_to(temp_dir))
+        print(f"Creating rar archive in {DEST_DIR}...")
+        rar_name = f"{folder_name}.rar"
+        rar_file = DEST_DIR / rar_name
+        subprocess.run(["Rar.exe", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), f"{temp_dir}\\*"], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
-        print(f"Archive: {DEST_DIR / zip_name}")
+        print(f"Archive: {DEST_DIR / rar_name}")
     finally:
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
     
     # Move processed installer and related .bin files to the processed folder
+    print("Moving processed installer")
     processed_path = game_folder / installer.name
     installer.rename(processed_path)
     print(f"Moved {installer} to {processed_path}.")
@@ -131,11 +126,13 @@ def process_directory_game(game_dir):
         print(f"Error: Unable to extract GOG game ID from {base_installer}: {e}")
         return
 
+    # Fetch game metadata using the installer as the base game
     game_name, year = fetch_metadata(gog_game_id)
+    game_name = game_name.title().replace("Ii","II").replace("IIi","III").replace("Iv","IV").replace("Vi","VI").replace("VIi","VII").replace("VIIi","VIII").replace("Ix","IX")
     if year == "0000":
-        folder_name = f"{game_name} (W_P)"
+        folder_name = f"{game_name} [GOG] (v) (W_P) (year)"
     else:
-        folder_name = f"{game_name} (W_P) ({year})"
+        folder_name = f"{game_name} [GOG] (v) (W_P) ({year})"
     folder_name = folder_name.replace(":", "")
     
     game_folder = WATCH_DIR / PROCESSED_DIR / folder_name
@@ -154,15 +151,12 @@ def process_directory_game(game_dir):
         return
 
     try:
-        print(f"Creating zip archive in {DEST_DIR}...")
-        zip_name = f"{folder_name}.zip"
-        with zipfile.ZipFile(DEST_DIR / zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, _, files in os.walk(temp_dir):
-                for file in files:
-                    file_path = Path(root) / file
-                    zipf.write(file_path, file_path.relative_to(temp_dir))
+        print(f"Creating rar archive in {DEST_DIR}...")
+        rar_name = f"{folder_name}.rar"
+        rar_file = DEST_DIR / rar_name
+        subprocess.run(["Rar.exe", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), f"{temp_dir}\\*"], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
-        print(f"Archive: {DEST_DIR / zip_name}")
+        print(f"Archive: {DEST_DIR / rar_name}")
     finally:
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
@@ -182,28 +176,43 @@ def process_directory_game(game_dir):
 
     save_processed_files(processed_files)
 
+
+# Process individual EXE files in the main WATCH_DIR
+exe_files = list(WATCH_DIR.glob("*.exe"))
+if exe_files:
+    for exe_file in exe_files:
+        if str(exe_file) not in processed_files:
+            print(f"New installer detected: {exe_file}")
+            process_installer(exe_file)
+# Also check each subdirectory in WATCH_DIR for EXE files
+for sub_dir in WATCH_DIR.iterdir():
+    if sub_dir.is_dir():
+        exe_files_in_dir = list(sub_dir.glob("*.exe"))
+        if exe_files_in_dir:
+            process_directory_game(sub_dir)
+
 # Watch the folder for new EXE files or directories containing EXE files
-def watch_folder():
-    print(f"Watching {WATCH_DIR} for new EXE files or directories...")
-    while True:
-        try:
-            # Process individual EXE files in the main WATCH_DIR
-            exe_files = list(WATCH_DIR.glob("*.exe"))
-            if exe_files:
-                for exe_file in exe_files:
-                    if str(exe_file) not in processed_files:
-                        print(f"New installer detected: {exe_file}")
-                        process_installer(exe_file)
-            # Also check each subdirectory in WATCH_DIR for EXE files
-            for sub_dir in WATCH_DIR.iterdir():
-                if sub_dir.is_dir():
-                    exe_files_in_dir = list(sub_dir.glob("*.exe"))
-                    if exe_files_in_dir:
-                        process_directory_game(sub_dir)
-        except Exception as e:
-            print(f"Error in watcher loop: {e}")
-        time.sleep(5)
-
-
-if __name__ == "__main__":
-    watch_folder()
+#def watch_folder():
+#    print(f"Watching {WATCH_DIR} for new EXE files or directories...")
+#    while True:
+#        try:
+#            # Process individual EXE files in the main WATCH_DIR
+#            exe_files = list(WATCH_DIR.glob("*.exe"))
+#            if exe_files:
+#                for exe_file in exe_files:
+#                    if str(exe_file) not in processed_files:
+#                        print(f"New installer detected: {exe_file}")
+#                        process_installer(exe_file)
+#            # Also check each subdirectory in WATCH_DIR for EXE files
+#            for sub_dir in WATCH_DIR.iterdir():
+#                if sub_dir.is_dir():
+#                    exe_files_in_dir = list(sub_dir.glob("*.exe"))
+#                    if exe_files_in_dir:
+#                        process_directory_game(sub_dir)
+#        except Exception as e:
+#            print(f"Error in watcher loop: {e}")
+#        time.sleep(5)
+#
+#
+#if __name__ == "__main__":
+#    watch_folder()
