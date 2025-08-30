@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import shutil
 import subprocess
 import requests
@@ -16,11 +17,9 @@ config.read('config.ini')
 WATCH_DIR = Path(config.get('folders', 'watch_dir', fallback="/WATCHED"))
 DEST_DIR = Path(config.get('folders', 'dest_dir', fallback="/DEST"))
 PROCESSED_JSON = WATCH_DIR / "processed_files.json"
-PROCESSED_DIR = Path(config.get('folders', 'processed_dir', fallback="processed"))
 
 # Ensure necessary directories exist
 DEST_DIR.mkdir(parents=True, exist_ok=True)
-(WATCH_DIR / PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
 
 # Load processed files list
 def load_processed_files():
@@ -77,11 +76,7 @@ def process_installer(installer):
         folder_name = f"{game_name} [GOG] (v) (W_P) ({year})"
     folder_name = folder_name.replace(":", "")
     
-    # Create a subfolder inside processed folder named after the game
-    game_folder = WATCH_DIR / PROCESSED_DIR / folder_name
-    game_folder.mkdir(parents=True, exist_ok=True)
-    
-    # Create temporary directory
+    # Extract files to temp directory and archive them in destination
     temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
     try:
         print(f"Extracting {installer}...")
@@ -93,19 +88,16 @@ def process_installer(installer):
         subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
         print(f"Archive: {DEST_DIR / rar_name}")
+    except Exception as e:
+        print(f"Error during extraction/archiving: {e}")
+        return
     finally:
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
     
-    # Move processed installer and related .bin files to the processed folder
-    print("Moving processed installer")
-    processed_path = game_folder / installer.name
-    installer.rename(processed_path)
-    print(f"Moved {installer} to {processed_path}.")
-    for bin_file in WATCH_DIR.glob(installer.stem + "-*.bin"):
-        new_bin_path = game_folder / bin_file.name
-        bin_file.rename(new_bin_path)
-        print(f"Moved {bin_file} to {new_bin_path}.")
+    # Remove executable from watch directory
+    print("Removing processed installer")
+    os.remove(installer)
     
     processed_files.add(str(installer))
     save_processed_files(processed_files)
@@ -136,9 +128,6 @@ def process_directory_game(game_dir):
         folder_name = f"{game_name} [GOG] (v) (W_P) ({year})"
     folder_name = folder_name.replace(":", "")
     
-    game_folder = WATCH_DIR / PROCESSED_DIR / folder_name
-    game_folder.mkdir(parents=True, exist_ok=True)
-    
     temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
     try:
         for installer in game_dir.glob("*.exe"):
@@ -152,32 +141,22 @@ def process_directory_game(game_dir):
         return
 
     try:
-        print(f"Creating rar archive in {DEST_DIR}...")
-        rar_name = f"{folder_name}.rar"
-        rar_file = DEST_DIR / rar_name
-        game_files = temp_dir / "*"
-        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
-        print(f"Extraction, zipping, and cleanup completed successfully!")
-        print(f"Archive: {DEST_DIR / rar_name}")
+        if list(temp_dir.glob("*")):
+            print(f"Creating rar archive in {DEST_DIR}...")
+            rar_name = f"{folder_name}.rar"
+            rar_file = DEST_DIR / rar_name
+            game_files = temp_dir / "*"
+            subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
+            print(f"Extraction, zipping, and cleanup completed successfully!")
+            print(f"Archive: {DEST_DIR / rar_name}")
     finally:
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
 
-    for installer in game_dir.glob("*.exe"):
-        if str(installer) in processed_files:
-            continue
-        processed_path = game_folder / installer.name
-        installer.rename(processed_path)
-        print(f"Moved {installer} to {processed_path}.")
-        processed_files.add(str(installer))
-    
-    for bin_file in game_dir.glob("*.bin"):
-        new_bin_path = game_folder / bin_file.name
-        bin_file.rename(new_bin_path)
-        print(f"Moved {bin_file} to {new_bin_path}.")
+    print("Removing processed game directory")
+    shutil.rmtree(game_dir)
 
     save_processed_files(processed_files)
-
 
 # Process individual EXE files in the main WATCH_DIR
 exe_files = list(WATCH_DIR.glob("*.exe"))
