@@ -89,7 +89,8 @@ def process_installer(installer):
         print(f"Creating rar archive in {DEST_DIR}...")
         rar_name = f"{folder_name}.rar"
         rar_file = DEST_DIR / rar_name
-        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), f"{temp_dir}\\*"], check=True)
+        game_files = temp_dir / "*"
+        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
         print(f"Archive: {DEST_DIR / rar_name}")
     finally:
@@ -154,7 +155,8 @@ def process_directory_game(game_dir):
         print(f"Creating rar archive in {DEST_DIR}...")
         rar_name = f"{folder_name}.rar"
         rar_file = DEST_DIR / rar_name
-        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), f"{temp_dir}\\*"], check=True)
+        game_files = temp_dir / "*"
+        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
         print(f"Archive: {DEST_DIR / rar_name}")
     finally:
