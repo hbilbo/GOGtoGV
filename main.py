@@ -80,12 +80,12 @@ def process_installer(installer):
     temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
     try:
         print(f"Extracting {installer}...")
-        subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+        subprocess.run(["innoextract", "-gmsp", "-d", str(temp_dir), str(installer)], check=True)
         print(f"Creating rar archive in {DEST_DIR}...")
         rar_name = f"{folder_name}.rar"
         rar_file = DEST_DIR / rar_name
         game_files = temp_dir / "*"
-        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
+        subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", "-idcdn", str(rar_file), str(game_files)], check=True)
         print(f"Extraction, zipping, and cleanup completed successfully!")
         print(f"Archive: {DEST_DIR / rar_name}")
     except Exception as e:
@@ -134,7 +134,7 @@ def process_directory_game(game_dir):
             if str(installer) in processed_files:
                 continue
             print(f"Extracting {installer}...")
-            subprocess.run(["innoextract", "--gog", "--exclude-temp", "--output-dir", str(temp_dir), str(installer)], check=True)
+            subprocess.run(["innoextract", "-gmsp", "-d", str(temp_dir), str(installer)], check=True)
     except Exception as e:
         print(f"Error during extraction: {e}")
         shutil.rmtree(temp_dir)
@@ -146,7 +146,7 @@ def process_directory_game(game_dir):
             rar_name = f"{folder_name}.rar"
             rar_file = DEST_DIR / rar_name
             game_files = temp_dir / "*"
-            subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", str(rar_file), str(temp_dir)], check=True)
+            subprocess.run(["rar", "a", "-htb", "-rr", "-r", "-ep1", "-idcdn", str(rar_file), str(game_files)], check=True)
             print(f"Extraction, zipping, and cleanup completed successfully!")
             print(f"Archive: {DEST_DIR / rar_name}")
     finally:
