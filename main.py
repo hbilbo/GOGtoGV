@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import shutil
 import subprocess
 import requests
@@ -9,14 +10,30 @@ from pathlib import Path
 import configparser
 import re
 
+# Verfity number of inputs
+if len(sys.argv) != 2:
+    print("Usage: python3 main.py </path/to/gog/file_or_folder>")
+    sys.exit(1)
+
+# Capture input from cli
+GOG_INPUT = Path(sys.argv[1])
+
+if not GOG_INPUT.is_dir() and not GOG_INPUT.is_file():
+    print(f"Error: Input '{GOG_INPUT}' is not a file or directory")
+    sys.exit(1)
+
 # Load configuration from ini file
 config = configparser.ConfigParser()
 config.read('config.ini')
 
 # Get folder paths from config or use default
-WATCH_DIR = Path(config.get('folders', 'watch_dir', fallback="/WATCHED"))
 DEST_DIR = Path(config.get('folders', 'dest_dir', fallback="/DEST"))
-PROCESSED_JSON = WATCH_DIR / "processed_files.json"
+TEMP_DIR = Path(config.get('folders', 'temp_dir', fallback="/TEMP"))
+
+# Set directory for processed_files.json file
+SCRIPT_DIR = Path(sys.argv[0])
+CURRENT_DIR = Path.cwd()
+PROCESSED_JSON = Path(CURRENT_DIR, SCRIPT_DIR.parent, "processed_files.json")
 
 # Ensure necessary directories exist
 DEST_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,7 +72,7 @@ def fetch_metadata(game_id):
         year = "0000"
     return game_title, year
 
-# Process a single installer (.exe) in WATCH_DIR
+# Process a single installer (.exe)
 def process_installer(installer):
     print(f"Extracting GOG game ID from {installer}...")
     try:
@@ -77,7 +94,7 @@ def process_installer(installer):
     folder_name = folder_name.replace(":", "")
     
     # Extract files to temp directory and archive them in destination
-    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
+    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=TEMP_DIR))
     try:
         print(f"Extracting {installer}...")
         subprocess.run(["innoextract", "-gmsp", "-d", str(temp_dir), str(installer)], check=True)
@@ -128,7 +145,7 @@ def process_directory_game(game_dir):
         folder_name = f"{game_name} [GOG] (v) (W_P) ({year})"
     folder_name = folder_name.replace(":", "")
     
-    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=WATCH_DIR))
+    temp_dir = Path(tempfile.mkdtemp(prefix="processing_", dir=TEMP_DIR))
     try:
         for installer in game_dir.glob("*.exe"):
             if str(installer) in processed_files:
@@ -158,19 +175,17 @@ def process_directory_game(game_dir):
 
     save_processed_files(processed_files)
 
-# Process individual EXE files in the main WATCH_DIR
-exe_files = list(WATCH_DIR.glob("*.exe"))
-if exe_files:
-    for exe_file in exe_files:
-        if str(exe_file) not in processed_files:
-            print(f"New installer detected: {exe_file}")
-            process_installer(exe_file)
-# Also check each subdirectory in WATCH_DIR for EXE files
-for sub_dir in WATCH_DIR.iterdir():
-    if sub_dir.is_dir():
-        exe_files_in_dir = list(sub_dir.glob("*.exe"))
-        if exe_files_in_dir:
-            process_directory_game(sub_dir)
+# Process individual EXE files
+if str(GOG_INPUT).lower().endswith(".exe"):
+    if str(GOG_INPUT) not in processed_files:
+        print(f"New installer detected: {GOG_INPUT}")
+        process_installer(GOG_INPUT)
+# Also check each subdirectory for EXE files
+if GOG_INPUT.is_dir():
+    exe_files_in_dir = list(GOG_INPUT.glob("*.exe"))
+    if exe_files_in_dir:
+        print(f"New installation folder detected: {GOG_INPUT}")
+        process_directory_game(GOG_INPUT)
 
 # Watch the folder for new EXE files or directories containing EXE files
 #def watch_folder():
