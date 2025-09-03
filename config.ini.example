@@ -1,4 +1,3 @@
 [folders]
-watch_dir = C:\\Games\\GOG
-dest_dir = C:\\Games\\GVDIR
-processed_dir = processed
+temp_dir = C:\\Games\\GOG
+dest_dir = C:\\Games\\GV

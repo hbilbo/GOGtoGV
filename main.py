@@ -112,10 +112,6 @@ def process_installer(installer):
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
     
-    # Remove executable from watch directory
-    print("Removing processed installer")
-    os.remove(installer)
-    
     processed_files.add(str(installer))
     save_processed_files(processed_files)
 
@@ -170,8 +166,10 @@ def process_directory_game(game_dir):
         print(f"Cleaning up {temp_dir}...")
         shutil.rmtree(temp_dir)
 
-    print("Removing processed game directory")
-    shutil.rmtree(game_dir)
+    for installer in game_dir.glob("*.exe"):
+        if str(installer) in processed_files:
+            continue
+        processed_files.add(str(installer))
 
     save_processed_files(processed_files)
 
