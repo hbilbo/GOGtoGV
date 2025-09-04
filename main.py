@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import sys
 import shutil
 import subprocess
@@ -82,7 +81,7 @@ def set_language(goginfo):
     if isinstance(goginfo, dict):
         print("Fixing dict info...")
         # Fix top-level 'language'
-        if "language" in goginfo:
+        if "language" in goginfo and goginfo["language"] != "neutral":
             goginfo["language"] = "English"
 
         # Fix 'languages' arrays
@@ -244,29 +243,3 @@ if GOG_INPUT.is_dir():
     if exe_files_in_dir:
         print(f"New installation folder detected: {GOG_INPUT}")
         process_directory_game(GOG_INPUT)
-
-# Watch the folder for new EXE files or directories containing EXE files
-#def watch_folder():
-#    print(f"Watching {WATCH_DIR} for new EXE files or directories...")
-#    while True:
-#        try:
-#            # Process individual EXE files in the main WATCH_DIR
-#            exe_files = list(WATCH_DIR.glob("*.exe"))
-#            if exe_files:
-#                for exe_file in exe_files:
-#                    if str(exe_file) not in processed_files:
-#                        print(f"New installer detected: {exe_file}")
-#                        process_installer(exe_file)
-#            # Also check each subdirectory in WATCH_DIR for EXE files
-#            for sub_dir in WATCH_DIR.iterdir():
-#                if sub_dir.is_dir():
-#                    exe_files_in_dir = list(sub_dir.glob("*.exe"))
-#                    if exe_files_in_dir:
-#                        process_directory_game(sub_dir)
-#        except Exception as e:
-#            print(f"Error in watcher loop: {e}")
-#        time.sleep(5)
-#
-#
-#if __name__ == "__main__":
-#    watch_folder()
