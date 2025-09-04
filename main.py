@@ -38,6 +38,11 @@ PROCESSED_JSON = Path(CURRENT_DIR, SCRIPT_DIR.parent, "processed_files.json")
 # Ensure necessary directories exist
 DEST_DIR.mkdir(parents=True, exist_ok=True)
 
+# Regex for locale codes like "xx-xx" (letters only)
+LOCALE_CODE = re.compile(r"^[a-z]+-[a-z]+$", re.IGNORECASE)
+# Regex for "-locale=xx" style strings
+LOCALE_PATTERN = re.compile(r"-locale=[A-Za-z-]+")
+
 # Load processed files list
 def load_processed_files():
     if PROCESSED_JSON.exists():
@@ -72,6 +77,36 @@ def fetch_metadata(game_id):
         year = "0000"
     return game_title, year
 
+# Set language and locale as English in goggame.info config file
+def set_language(goginfo):
+    if isinstance(goginfo, dict):
+        print("Fixing dict info...")
+        # Fix top-level 'language'
+        if "language" in goginfo:
+            goginfo["language"] = "English"
+
+        # Fix 'languages' arrays
+        if "languages" in goginfo and isinstance(goginfo["languages"], list):
+            if len(goginfo["languages"]) == 1:
+                val = goginfo["languages"][0]
+                if isinstance(val, str) and LOCALE_CODE.match(val):
+                    goginfo["languages"] = ["en-US"]
+        # Recurse into dictionary values
+        for k, v in goginfo.items():
+            goginfo[k] = set_language(v)
+
+    elif isinstance(goginfo, list):
+        print("Fixing list info...")
+        # Recurse into each list element
+        goginfo = [set_language(x) for x in goginfo]
+
+    elif isinstance(goginfo, str):
+        print("Fixing str info...")
+        # Apply regex replacement in strings
+        goginfo = LOCALE_PATTERN.sub("-locale=us", goginfo)
+
+    return goginfo
+
 # Process a single installer (.exe)
 def process_installer(installer):
     print(f"Extracting GOG game ID from {installer}...")
@@ -98,6 +133,19 @@ def process_installer(installer):
     try:
         print(f"Extracting {installer}...")
         subprocess.run(["innoextract", "-gmsp", "-d", str(temp_dir), str(installer)], check=True)
+
+        # Fixing language and locale if needed
+        for goginfo in temp_dir.glob("goggame*.info"):
+            if goginfo:
+                print(f"Setting language in config file: {goginfo}")
+                with open(goginfo, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                normalized = set_language(data)
+
+                with open(goginfo, "w", encoding="utf-8") as f:
+                    json.dump(normalized, f, indent=4, ensure_ascii=False)
+
         print(f"Creating rar archive in {DEST_DIR}...")
         rar_name = f"{folder_name}.rar"
         rar_file = DEST_DIR / rar_name
@@ -148,6 +196,18 @@ def process_directory_game(game_dir):
                 continue
             print(f"Extracting {installer}...")
             subprocess.run(["innoextract", "-gmsp", "-d", str(temp_dir), str(installer)], check=True)
+
+        # Fixing language and locale if needed
+        for goginfo in temp_dir.glob("goggame*.info"):
+            if goginfo:
+                print(f"Setting language in config file: {goginfo}")
+                with open(goginfo, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                normalized = set_language(data)
+
+                with open(goginfo, "w", encoding="utf-8") as f:
+                    json.dump(normalized, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"Error during extraction: {e}")
         shutil.rmtree(temp_dir)
