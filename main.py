@@ -142,6 +142,11 @@ def process_installer(installer):
 
                 normalized = set_language(data)
 
+                # Check if any files named language* exist
+                for item in temp_dir.rglob("*"):
+                    if item.is_file() and "language" in str(item):
+                        print(f"Warning: Verify language file {item} has the correct language settings")
+
                 with open(goginfo, "w", encoding="utf-8") as f:
                     json.dump(normalized, f, indent=4, ensure_ascii=False)
 
@@ -204,6 +209,11 @@ def process_directory_game(game_dir):
                     data = json.load(f)
 
                 normalized = set_language(data)
+
+                # Check if any files named language* exist
+                for item in temp_dir.rglob("*"):
+                    if item.is_file() and "language" in str(item):
+                        print(f"Warning: Verify language file {item} has the correct language settings")
 
                 with open(goginfo, "w", encoding="utf-8") as f:
                     json.dump(normalized, f, indent=4, ensure_ascii=False)
